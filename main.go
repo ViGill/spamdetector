@@ -11,7 +11,7 @@ import (
 
 var (
 	n             = flag.Int("n", 5, "Number of images to compare")
-	maxSameImg    = flag.Int("s", 2, "Number of similar images to report as spam")
+	maxSameImg    = flag.Int("s", 2, "Maximal number of times 2 consecutive images can be similar")
 	diffThreshold = 10.0
 )
 
