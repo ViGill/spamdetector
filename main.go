@@ -45,25 +45,27 @@ func expand(tmpl, filename string) string {
 }
 
 // writeImage writes image img to the file fn.
-func writeImage(img image.Image, fn string) {
+func writeImage(img image.Image, fn string) bool {
 	f, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Can't create file: %v\n", err)
-		os.Exit(0)
+		return false
 	}
 	defer f.Close()
 
 	err = png.Encode(f, img)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "PNG encoding error: %v\n", err)
-		os.Exit(0)
+		return false
 	}
+
+	return true
 }
 
 func detectSpam(fn string) bool {
 	gen, err := screengen.NewGenerator(fn)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading video file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error reading video file [%s]: %v\n", fn, err)
 		return false
 	}
 	defer gen.Close()
@@ -89,7 +91,7 @@ func detectSpam(fn string) bool {
 		dname, err = mkdir(dname)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Can't create directory: %v\n", err)
-			os.Exit(0)
+			return false
 		}
 	}
 
@@ -146,11 +148,11 @@ func detectSpam(fn string) bool {
 
 	if identicalImgCount >= *maxSameImg {
 		fmt.Printf("%s is SPAM\n", fn)
-		return true
 	} else {
 		fmt.Printf("%s is safe\n", fn)
-		return false
 	}
+
+	return true
 
 }
 
@@ -158,13 +160,13 @@ func main() {
 	flag.Parse()
 	if len(flag.Args()) == 0 {
 		flag.Usage()
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	fi, err := os.Stat(flag.Args()[0])
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	if fi.Mode().IsDir() {
@@ -180,10 +182,10 @@ func main() {
 			detectSpam(flag.Args()[0] + "/" + f.Name())
 		}
 	} else {
-		if detectSpam(flag.Args()[0]) {
-			os.Exit(0)
-		} else {
+		if !detectSpam(flag.Args()[0]) {
 			os.Exit(1)
 		}
 	}
+
+	os.Exit(0)
 }
