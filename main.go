@@ -49,22 +49,22 @@ func writeImage(img image.Image, fn string) {
 	f, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Can't create file: %v\n", err)
-		os.Exit(1)
+		os.Exit(0)
 	}
 	defer f.Close()
 
 	err = png.Encode(f, img)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "PNG encoding error: %v\n", err)
-		os.Exit(1)
+		os.Exit(0)
 	}
 }
 
-func detectSpam(fn string) {
+func detectSpam(fn string) bool {
 	gen, err := screengen.NewGenerator(fn)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading video file: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 	defer gen.Close()
 
@@ -89,7 +89,7 @@ func detectSpam(fn string) {
 		dname, err = mkdir(dname)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Can't create directory: %v\n", err)
-			os.Exit(1)
+			os.Exit(0)
 		}
 	}
 
@@ -110,7 +110,7 @@ func detectSpam(fn string) {
 		imgCur, err = gen.Image(d)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Can't generate screenshot: %v\n", err)
-			os.Exit(1)
+			return false
 		}
 
 		if *keepFiles {
@@ -123,7 +123,7 @@ func detectSpam(fn string) {
 			res, n, err := differ.Compare(imgCur, imgPrev)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Can't diff pictures")
-				os.Exit(1)
+				return false
 			}
 
 			np := 100.0 * (float64(n) / float64(res.Bounds().Dx()*res.Bounds().Dy()))
@@ -146,8 +146,10 @@ func detectSpam(fn string) {
 
 	if identicalImgCount >= *maxSameImg {
 		fmt.Printf("%s is SPAM\n", fn)
+		return true
 	} else {
 		fmt.Printf("%s is safe\n", fn)
+		return false
 	}
 
 }
@@ -156,13 +158,13 @@ func main() {
 	flag.Parse()
 	if len(flag.Args()) == 0 {
 		flag.Usage()
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	fi, err := os.Stat(flag.Args()[0])
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	if fi.Mode().IsDir() {
@@ -178,6 +180,10 @@ func main() {
 			detectSpam(flag.Args()[0] + "/" + f.Name())
 		}
 	} else {
-		detectSpam(flag.Args()[0])
+		if detectSpam(flag.Args()[0]) {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
 	}
 }
