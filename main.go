@@ -5,21 +5,24 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/crhym3/imgdiff"
+	"github.com/ViGill/imgdiff"
+	"github.com/cheggaaa/pb"
 	"github.com/opennota/screengen"
 )
 
 var (
 	verbose       = flag.Bool("v", false, "Verbose")
+	progressBar   = flag.Bool("p", false, "Progress bar")
 	keepFiles     = flag.Bool("k", false, "Keep files in png format")
 	n             = flag.Int("n", 5, "Number of images to compare")
 	maxSameImg    = flag.Int("s", 2, "Maximal number of times 2 consecutive images can be similar")
-	diffThreshold = 10.0
+	diffThreshold = 1.0
 )
 
 func mkdir(name string) (string, error) {
@@ -65,7 +68,8 @@ func detectSpam(fn string) {
 	}
 	defer gen.Close()
 
-	differ := imgdiff.NewPerceptual(2.2, 100.0, 45.0, 1.0, true)
+	//	differ := imgdiff.NewPerceptual(2.2, 100.0, 45.0, 1.0, true)
+	differ := imgdiff.NewBinary()
 
 	// Fast seek mode
 	gen.Fast = true
@@ -94,6 +98,12 @@ func detectSpam(fn string) {
 
 	identicalImgCount := 0
 	d := inc / 2
+
+	var bar *pb.ProgressBar
+
+	if *progressBar {
+		bar = pb.StartNew(*n)
+	}
 
 	for i := 0; i < *n; i++ {
 		imgPrev = imgCur
@@ -125,12 +135,19 @@ func detectSpam(fn string) {
 			}
 		}
 		d += inc
+		if *progressBar {
+			bar.Increment()
+		}
+	}
+
+	if *progressBar {
+		bar.Finish()
 	}
 
 	if identicalImgCount >= *maxSameImg {
-		fmt.Printf("This is SPAM! (%d>=%d)\n", identicalImgCount, *maxSameImg)
+		fmt.Printf("%s is SPAM\n", fn)
 	} else {
-		fmt.Printf("This is not spam... (%d<%d)\n", identicalImgCount, *maxSameImg)
+		fmt.Printf("%s is safe\n", fn)
 	}
 
 }
@@ -142,5 +159,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	detectSpam(flag.Args()[0])
+	fi, err := os.Stat(flag.Args()[0])
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if fi.Mode().IsDir() {
+		files, _ := ioutil.ReadDir(flag.Args()[0])
+		for _, f := range files {
+			fi2, err := os.Stat(f.Name())
+			if err != nil || fi2.Mode().IsDir() {
+				continue
+			}
+			if *verbose {
+				fmt.Fprintf(os.Stderr, "Checking %s\n", f.Name())
+			}
+			detectSpam(flag.Args()[0] + "/" + f.Name())
+		}
+	} else {
+		detectSpam(flag.Args()[0])
+	}
 }
