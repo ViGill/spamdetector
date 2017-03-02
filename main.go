@@ -72,7 +72,7 @@ func detectSpam(fn string) {
 	differ := imgdiff.NewBinary()
 
 	// Fast seek mode
-	gen.Fast = true
+	//	gen.Fast = true
 
 	inc := gen.Duration / int64(*n)
 
