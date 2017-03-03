@@ -147,7 +147,7 @@ func detectSpam(fn string) bool {
 	}
 
 	if identicalImgCount >= *maxSameImg {
-		fmt.Printf("%s is SPAM\n", fn)
+		fmt.Printf("%s is SPAM\nslideshow\n", fn)
 	} else {
 		fmt.Printf("%s is safe\n", fn)
 	}
